@@ -1,0 +1,189 @@
+package com.example.appcalorica.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.example.appcalorica.ViewModel.ExerciseViewModel
+import com.example.appcalorica.ViewModel.FoodViewModel
+import com.example.appcalorica.viewmodel.UserViewModel
+import kotlin.math.pow
+
+@Composable
+fun DashboardScreen(
+    navController: NavController,
+    userViewModel: UserViewModel,
+    foodViewModel: FoodViewModel,
+    exerciseViewModel: ExerciseViewModel
+) {
+    val userState by userViewModel.user.collectAsState()
+    val foodEntries by foodViewModel.foodEntries.collectAsState()
+    val exerciseEntries by exerciseViewModel.exercises.collectAsState()
+    val scope = rememberCoroutineScope()
+
+    var caloriasRecomendadas by remember { mutableStateOf(0) }
+    var grasaCorporal by remember { mutableStateOf(0.0) }
+    var nombreUsuario by remember { mutableStateOf("") }
+
+    // Se actualizan datos al entrar
+    LaunchedEffect(Unit) {
+        foodViewModel.loadEntries()
+        exerciseViewModel.loadExercises()
+        userViewModel.loadCurrentUser()
+    }
+
+    userState?.let { user ->
+        nombreUsuario = user.name
+
+        val baseCalories = if (user.sex.trim().lowercase().startsWith("h")) {
+            (66.5 + (13.75 * user.weightKg) + (5.003 * user.heightCm) - (6.75 * user.age))
+        } else {
+            (655.1 + (9.563 * user.weightKg) + (1.850 * user.heightCm) - (4.676 * user.age))
+        }
+
+        val activityMultiplier = when (user.activityLevel.lowercase()) {
+            "activo" -> 1.9
+            "moderado" -> 1.55
+            else -> 1.2
+        }
+
+        var adjustedCalories = baseCalories * activityMultiplier
+        adjustedCalories = when (user.goalType.lowercase()) {
+            "perder peso" -> adjustedCalories * 0.85
+            "ganar peso" -> adjustedCalories * 1.15
+            else -> adjustedCalories
+        }
+
+        caloriasRecomendadas = adjustedCalories.toInt()
+
+        val imc = user.weightKg / (user.heightCm / 100.0).pow(2)
+        grasaCorporal = if (user.sex.trim().lowercase().startsWith("h")) {
+            (1.20 * imc) + (0.23 * user.age) - 16.2
+        } else {
+            (1.20 * imc) + (0.23 * user.age) - 5.4
+        }
+    }
+
+    val caloriasConsumidas = foodEntries
+        .filter { it.userId == userViewModel.currentUserId() }
+        .sumOf { it.calories }
+
+    val caloriasEjercicio = exerciseEntries
+        .filter { it.userId == userViewModel.currentUserId() }
+        .sumOf { it.caloriesBurned }
+
+    val caloriasActuales = caloriasConsumidas - caloriasEjercicio
+    val colorConsumo = if (caloriasActuales <= caloriasRecomendadas) Color(0xFF34C759) else Color.Red
+
+    // Creamos una interfaz moderna y de scroll
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFFE0EAFB), Color(0xFFB6CCE0))
+                )
+            )
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        Column {
+            Text(
+                "Resumen Diario",
+                style = MaterialTheme.typography.h5.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2C3E50)
+                )
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Surface(
+                elevation = 4.dp,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    if (userState == null) {
+                        CircularProgressIndicator()
+                    } else {
+                        Text("Hola, $nombreUsuario", fontSize = 18.sp)
+                        Text("Calorías recomendadas: $caloriasRecomendadas kcal", fontSize = 16.sp)
+                        Text("Grasa corporal estimada: ${"%.1f".format(grasaCorporal)}%", fontSize = 16.sp)
+                        Text(
+                            "Calorías actuales consumidas: $caloriasActuales kcal",
+                            color = colorConsumo,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                "Acciones",
+                style = MaterialTheme.typography.subtitle1.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF34495E)
+                )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = { navController.navigate("foodLog") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Text("Registrar Comida")
+            }
+
+            Button(
+                onClick = { navController.navigate("exerciseLog") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Text("Registrar Ejercicio")
+            }
+
+            Button(
+                onClick = { navController.navigate("calendar") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Text("Ver Calendario")
+            }
+
+            Button(
+                onClick = { navController.navigate("stats") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+            ) {
+                Text("Ver Estadísticas")
+            }
+
+            Divider(modifier = Modifier.padding(vertical = 12.dp))
+
+            Button(
+                onClick = { navController.navigate("settings") },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Editar Perfil")
+            }
+        }
+    }
+}
