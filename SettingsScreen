@@ -1,0 +1,233 @@
+package com.example.appcalorica.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import com.example.appcalorica.model.UserModel
+import com.example.appcalorica.viewmodel.UserViewModel
+import kotlinx.coroutines.launch
+
+@Composable
+fun SettingsScreen(
+    navController: NavController,
+    userViewModel: UserViewModel,
+    onLogout: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var sex by remember { mutableStateOf("") }
+    var age by remember { mutableStateOf("") }
+    var weight by remember { mutableStateOf("") }
+    var height by remember { mutableStateOf("") }
+    var goalType by remember { mutableStateOf("Mantenimiento") }
+    var activityLevel by remember { mutableStateOf("Sedentario") }
+    var message by remember { mutableStateOf<String?>(null) }
+    var isError by remember { mutableStateOf(false) }
+    var isEditMode by remember { mutableStateOf(false) }
+
+    val goalOptions = listOf("Mantenimiento", "Perder peso", "Ganar peso")
+    val activityOptions = listOf("Sedentario", "Moderado", "Activo")
+
+    LaunchedEffect(Unit) {
+        userViewModel.loadAllUsers()
+        val existingUser = userViewModel.getUser()
+        existingUser?.let {
+            name = it.name
+            sex = it.sex
+            age = it.age.toString()
+            weight = it.weightKg.toString()
+            height = it.heightCm.toString()
+            goalType = it.goalType
+            activityLevel = it.activityLevel ?: "Sedentario"
+            isEditMode = true
+        }
+    }
+
+    val allUsers by userViewModel.allUsers.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFE0EAFB), Color(0xFFB6CCE0))
+                )
+            )
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        Text("${if (isEditMode) "Editar" else "Crear"} Perfil", style = MaterialTheme.typography.h6)
+
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = name,
+            onValueChange = { name = it },
+            label = { Text("Nombre completo") },
+            enabled = !isEditMode
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = sex,
+            onValueChange = { sex = it },
+            label = { Text("Sexo (H/M)") },
+            enabled = !isEditMode
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = age,
+            onValueChange = { age = it },
+            label = { Text("Edad") },
+            enabled = !isEditMode
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = weight,
+            onValueChange = { weight = it },
+            label = { Text("Peso (kg)") }
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = height,
+            onValueChange = { height = it },
+            label = { Text("Estatura (cm)") },
+            enabled = !isEditMode
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Objetivo")
+        DropdownMenuBox(goalType, goalOptions) { selected -> goalType = selected }
+
+        Spacer(modifier = Modifier.height(8.dp))
+        Text("Nivel de actividad")
+        DropdownMenuBox(activityLevel, activityOptions) { selected -> activityLevel = selected }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(onClick = {
+            try {
+                if (name.isBlank() || sex.isBlank() || age.isBlank() || weight.isBlank() || height.isBlank()) {
+                    message = "Todos los campos son obligatorios"
+                    isError = true
+                    return@Button
+                }
+
+                val userId = try {
+                    userViewModel.currentUserId()
+                } catch (e: Exception) {
+                    message = "Error: Usuario no autenticado"
+                    isError = true
+                    return@Button
+                }
+
+                val newWeight = weight.toFloat()
+
+                val user = UserModel(
+                    id = userId,
+                    name = name,
+                    sex = sex,
+                    age = age.toInt(),
+                    weightKg = newWeight,
+                    heightCm = height.toInt(),
+                    goalType = goalType,
+                    activityLevel = activityLevel
+                )
+
+                coroutineScope.launch {
+                    userViewModel.saveUser(user)
+                    message = "Perfil guardado correctamente"
+                    isError = false
+                    navController.navigate("dashboard") {
+                        popUpTo("settings") { inclusive = true }
+                    }
+                }
+            } catch (e: Exception) {
+                message = "Error: ${e.message}"
+                isError = true
+            }
+        }) {
+            Text("Guardar Perfil")
+        }
+
+        message?.let {
+            Spacer(modifier = Modifier.height(12.dp))
+            Text(
+                text = it,
+                color = if (isError) Color.Red else Color(0xFF34C759)
+            )
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+        Divider()
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Text("Perfiles Creados", style = MaterialTheme.typography.subtitle1)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        allUsers.forEach { user ->
+            Text("• ${user.name}")
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+        Divider()
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = onLogout,
+            colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.error)
+        ) {
+            Text("Cerrar Sesión", color = MaterialTheme.colors.onError)
+        }
+    }
+}
+
+@Composable
+fun DropdownMenuBox(selected: String, options: List<String>, onSelected: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = selected,
+            onValueChange = {},
+            modifier = Modifier.fillMaxWidth(),
+            readOnly = true,
+            label = { Text("Selecciona una opción") },
+            trailingIcon = {
+                IconButton(onClick = { expanded = !expanded }) {
+                    Icon(
+                        imageVector = if (expanded) Icons.Filled.KeyboardArrowUp else Icons.Filled.KeyboardArrowDown,
+                        contentDescription = null
+                    )
+                }
+            }
+        )
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(onClick = {
+                    onSelected(option)
+                    expanded = false
+                }) {
+                    Text(option)
+                }
+            }
+        }
+    }
+}
+
