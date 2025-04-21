@@ -1,0 +1,154 @@
+package com.example.appcalorica.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.example.appcalorica.ViewModel.ExerciseViewModel
+import com.example.appcalorica.model.ExerciseEntry
+import kotlinx.coroutines.launch
+
+@Composable
+fun ExerciseLogScreen(viewModel: ExerciseViewModel) {
+    var name by remember { mutableStateOf("") }
+    var calories by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val exercises by viewModel.exercises.collectAsState()
+
+    LaunchedEffect(Unit) {
+        viewModel.loadExercises()
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFE0EAFB), Color(0xFFB6CCE0))
+                )
+            )
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        Column {
+            Text(
+                "Registro de Ejercicio",
+                style = MaterialTheme.typography.h5.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2C3E50)
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                elevation = 4.dp,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    OutlinedTextField(
+                        value = name,
+                        onValueChange = { name = it },
+                        label = { Text("Ejercicio") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = calories,
+                        onValueChange = { calories = it },
+                        label = { Text("Calorías quemadas") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            if (name.isBlank() || calories.isBlank()) {
+                                message = "Todos los campos son obligatorios"
+                                return@Button
+                            }
+
+                            scope.launch {
+                                try {
+                                    val entry = ExerciseEntry(
+                                        name = name,
+                                        caloriesBurned = calories.toInt(),
+                                        userId = viewModel.currentUserId()
+                                    )
+                                    viewModel.addExercise(entry)
+                                    name = ""
+                                    calories = ""
+                                    message = "Ejercicio agregado correctamente"
+                                } catch (e: Exception) {
+                                    message = "Error: ${e.message}"
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Guardar")
+                    }
+
+                    message?.let {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(it, color = MaterialTheme.colors.primary)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+            Divider()
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Text(
+                "Ejercicios registrados",
+                style = MaterialTheme.typography.subtitle1.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF34495E)
+                )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (exercises.isEmpty()) {
+                Text("No hay ejercicios registrados aún.")
+            } else {
+                exercises.forEach { entry ->
+                    Surface(
+                        elevation = 2.dp,
+                        shape = MaterialTheme.shapes.small,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text("${entry.name}: ${entry.caloriesBurned} kcal")
+                            TextButton(onClick = {
+                                viewModel.deleteExerciseByName(entry.name)
+                            }) {
+                                Text("Eliminar", color = MaterialTheme.colors.error)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
