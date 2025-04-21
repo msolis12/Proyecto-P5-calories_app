@@ -1,0 +1,99 @@
+package com.example.appcalorica
+
+import android.content.Intent
+import android.os.Bundle
+import android.util.Log
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.viewModels
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
+import androidx.compose.runtime.*
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.compose.rememberNavController
+import com.example.appcalorica.ViewModel.AuthViewModel
+import com.example.appcalorica.ViewModel.ExerciseViewModel
+import com.example.appcalorica.ViewModel.FoodViewModel
+import com.example.appcalorica.navigation.AppNavGraph
+import com.example.appcalorica.ui.theme.AppCaloricaTheme
+import com.example.appcalorica.viewmodel.UserViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.common.api.ApiException
+import kotlinx.coroutines.launch
+
+class MainActivity : ComponentActivity() {
+
+    private lateinit var googleSignInLauncher: ActivityResultLauncher<Intent>
+    private val authViewModel: AuthViewModel by viewModels()
+    private val userViewModel: UserViewModel by viewModels()
+    private val foodViewModel: FoodViewModel by viewModels()
+    private val exerciseViewModel: ExerciseViewModel by viewModels()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        val nextScreen = mutableStateOf<String?>(null)
+
+        googleSignInLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+            try {
+                val account = task.getResult(ApiException::class.java)
+                authViewModel.handleSignInResult(
+                    account,
+                    onSuccess = {
+                        val userId = authViewModel.currentUserId()
+                        if (userId.isEmpty()) {
+                            Log.e("Login", "UserID vacío después del login")
+                            return@handleSignInResult
+                        }
+                        lifecycleScope.launch {
+                            val exists = authViewModel.doesUserExist(userId)
+                            nextScreen.value = if (exists) "dashboard" else "settings"
+                        }
+                    },
+                    onError = { e ->
+                        Log.e("GoogleSignIn", "Error al iniciar sesión: ${e.localizedMessage}")
+                    }
+                )
+            } catch (e: Exception) {
+                Log.e("GoogleSignIn", "Excepción inesperada: ${e.localizedMessage}")
+            }
+        }
+
+        setContent {
+            AppCaloricaTheme {
+                Surface(color = MaterialTheme.colors.background) {
+                    val navController = rememberNavController()
+
+                    LaunchedEffect(nextScreen.value) {
+                        nextScreen.value?.let { target ->
+                            navController.navigate(target) {
+                                popUpTo("login") { inclusive = true }
+                            }
+                            nextScreen.value = null
+                        }
+                    }
+
+                    AppNavGraph(
+                        navController = navController,
+                        onLoginClick = {
+                            authViewModel.launchSignInIntent(this@MainActivity, googleSignInLauncher)
+                        },
+                        loginError = null,
+                        userViewModel = userViewModel,
+                        foodViewModel = foodViewModel,
+                        exerciseViewModel = exerciseViewModel,
+                        onLogout = {
+                            authViewModel.signOut()
+                            navController.navigate("login") {
+                                popUpTo("dashboard") { inclusive = true }
+                            }
+                        }
+                    )
+                }
+            }
+        }
+    }
+}
