@@ -1,0 +1,35 @@
+package com.example.appcalorica.repository
+
+import android.content.ContentValues
+
+import android.content.Context
+
+import android.provider.CalendarContract
+
+import java.util.*
+
+class CalendarRepository(private val context: Context) {
+
+    fun addEvent(title: String, description: String, startTimeMillis: Long, durationMinutes: Int = 60) {
+
+        val values = ContentValues().apply {
+
+            put(CalendarContract.Events.DTSTART, startTimeMillis)
+
+            put(CalendarContract.Events.DTEND, startTimeMillis + durationMinutes * 60 * 1000)
+
+            put(CalendarContract.Events.TITLE, title)
+
+            put(CalendarContract.Events.DESCRIPTION, description)
+
+            put(CalendarContract.Events.CALENDAR_ID, 1)
+
+            put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
+
+        }
+
+        context.contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+
+    }
+
+}
