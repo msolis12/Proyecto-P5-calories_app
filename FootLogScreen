@@ -1,0 +1,131 @@
+package com.example.appcalorica.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.example.appcalorica.ViewModel.FoodViewModel
+import com.example.appcalorica.model.FoodEntry
+import androidx.navigation.NavController
+import kotlinx.coroutines.launch
+
+@Composable
+fun FoodLogScreen(navController: NavController, foodViewModel: FoodViewModel) {
+    val scope = rememberCoroutineScope()
+    val foodEntries by foodViewModel.foodEntries.collectAsState()
+
+    LaunchedEffect(Unit) {
+        scope.launch { foodViewModel.loadEntries() }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFE0EAFB), Color(0xFFB6CCE0))
+                )
+            )
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Column {
+            Text(
+                "Registro de Comidas",
+                style = MaterialTheme.typography.h5.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2C3E50)
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            MealSection(
+                title = "Desayuno",
+                items = foodEntries.filter { it.mealType == "Desayuno" },
+                onAddClick = { navController.navigate("breakfast") },
+                onDeleteClick = { foodName -> foodViewModel.deleteFoodByName(foodName) }
+            )
+
+            MealSection(
+                title = "Almuerzo",
+                items = foodEntries.filter { it.mealType == "Almuerzo" },
+                onAddClick = { navController.navigate("lunch") },
+                onDeleteClick = { foodName -> foodViewModel.deleteFoodByName(foodName) }
+            )
+
+            MealSection(
+                title = "Cena",
+                items = foodEntries.filter { it.mealType == "Cena" },
+                onAddClick = { navController.navigate("dinner") },
+                onDeleteClick = { foodName -> foodViewModel.deleteFoodByName(foodName) }
+            )
+
+            MealSection(
+                title = "Merienda",
+                items = foodEntries.filter { it.mealType == "Merienda" },
+                onAddClick = { navController.navigate("snacks") },
+                onDeleteClick = { foodName -> foodViewModel.deleteFoodByName(foodName) }
+            )
+        }
+    }
+}
+
+@Composable
+fun MealSection(
+    title: String,
+    items: List<FoodEntry>,
+    onAddClick: () -> Unit,
+    onDeleteClick: (String) -> Unit
+) {
+    Surface(
+        elevation = 4.dp,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                title,
+                style = MaterialTheme.typography.subtitle1.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF34495E)
+                )
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (items.isEmpty()) {
+                Text("No hay registros en $title", style = MaterialTheme.typography.body2)
+            } else {
+                items.forEach { entry ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("${entry.name}: ${entry.calories} kcal")
+                        TextButton(onClick = { onDeleteClick(entry.name) }) {
+                            Text("Eliminar", color = MaterialTheme.colors.error)
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+            Button(onClick = onAddClick, modifier = Modifier.fillMaxWidth()) {
+                Text("Agregar a $title")
+            }
+        }
+    }
+}
+
+
