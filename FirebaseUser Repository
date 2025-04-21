@@ -1,0 +1,27 @@
+package com.example.appcalorica.repository
+
+import com.example.appcalorica.model.UserModel
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+
+class FirebaseUserRepository {
+    private val db = FirebaseFirestore.getInstance()
+    private val users = db.collection("users")
+
+    // Guarda o actualiza un perfil de usuario
+    suspend fun saveUser(user: UserModel) {
+        users.document(user.id).set(user).await()
+    }
+
+    // Obtiene un usuario específico por su ID
+    suspend fun getUser(userId: String): UserModel? {
+        val snapshot = users.document(userId).get().await()
+        return snapshot.toObject(UserModel::class.java)
+    }
+
+    // Obtiene todos los usuarios (útil para listar en pantalla de ajustes si querés)
+    suspend fun getAllUsers(): List<UserModel> {
+        val snapshot = users.get().await()
+        return snapshot.toObjects(UserModel::class.java)
+    }
+}
