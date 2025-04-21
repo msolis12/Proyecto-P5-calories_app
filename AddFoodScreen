@@ -1,0 +1,122 @@
+package com.example.appcalorica.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+import com.example.appcalorica.model.FoodEntry
+import com.example.appcalorica.ViewModel.FoodViewModel
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.launch
+
+@Composable
+fun AddFoodScreen(
+    navController: NavController,
+    mealType: String,
+    foodViewModel: FoodViewModel
+) {
+    var foodName by remember { mutableStateOf("") }
+    var calories by remember { mutableStateOf("") }
+    var message by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFE0EAFB), Color(0xFFB6CCE0))
+                )
+            )
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        Column {
+            Text(
+                "Agregar a $mealType",
+                style = MaterialTheme.typography.h5.copy(
+                    color = Color(0xFF2C3E50)
+                )
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Surface(
+                elevation = 4.dp,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    OutlinedTextField(
+                        value = foodName,
+                        onValueChange = { foodName = it },
+                        label = { Text("Nombre del alimento") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    OutlinedTextField(
+                        value = calories,
+                        onValueChange = { calories = it },
+                        label = { Text("Calorías") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Button(
+                        onClick = {
+                            if (foodName.isNotBlank() && calories.isNotBlank()) {
+                                scope.launch {
+                                    try {
+                                        val entry = FoodEntry(
+                                            name = foodName,
+                                            calories = calories.toInt(),
+                                            mealType = mealType,
+                                            userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+                                        )
+                                        foodViewModel.addFood(entry)
+                                        message = "Registrado correctamente"
+                                        foodName = ""
+                                        calories = ""
+                                    } catch (e: Exception) {
+                                        message = "Error: ${e.message}"
+                                    }
+                                }
+                            } else {
+                                message = "Por favor completa todos los campos"
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Guardar")
+                    }
+
+                    message?.let {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(text = it, color = MaterialTheme.colors.primary)
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Button(
+                onClick = { navController.popBackStack() },
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.secondary)
+            ) {
+                Text("Volver", color = MaterialTheme.colors.onSecondary)
+            }
+        }
+    }
+}
+
