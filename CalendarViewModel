@@ -1,0 +1,20 @@
+package com.example.appcalorica.ViewModel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.appcalorica.repository.CalendarRepository
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+class CalendarViewModel(private val calendarRepository: CalendarRepository) : ViewModel() {
+    private val _events = MutableStateFlow<List<String>>(emptyList())
+    val events: StateFlow<List<String>> = _events
+
+    fun addEventToCalendar(title: String, description: String, timeMillis: Long) {
+        viewModelScope.launch {
+            calendarRepository.addEvent(title, description, timeMillis)
+            _events.value = _events.value + "$title - $description"
+        }
+    }
+}
