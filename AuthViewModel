@@ -1,0 +1,97 @@
+package com.example.appcalorica.ViewModel
+
+import android.app.Activity
+import android.content.Intent
+import android.util.Log
+import androidx.activity.result.ActivityResultLauncher
+import androidx.lifecycle.ViewModel
+import com.example.appcalorica.model.UserModel
+import com.example.appcalorica.repository.FirebaseUserRepository
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInAccount
+import com.google.android.gms.auth.api.signin.GoogleSignInClient
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+class AuthViewModel : ViewModel() {
+
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private var googleSignInClient: GoogleSignInClient? = null
+    private val userRepository = FirebaseUserRepository()
+
+    private val _isLoggedIn = MutableStateFlow(auth.currentUser != null)
+    val isLoggedIn: StateFlow<Boolean> = _isLoggedIn
+
+    /**
+     * Configura el cliente de inicio de sesión de Google.
+     */
+    fun setupGoogleSignIn(activity: Activity) {
+        val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+            // Reemplaza con nuestro Client ID del proyecto en Firebase (Web client ID)
+            .requestIdToken("264801984870-9qidm9c9migns6qdd50gahqtncobugdd.apps.googleusercontent.com")
+            .requestEmail()
+            .build()
+
+        googleSignInClient = GoogleSignIn.getClient(activity, gso)
+    }
+
+    /**
+     * Lanzamos la intención de Google Sign-In.
+     */
+    fun launchSignInIntent(activity: Activity, launcher: ActivityResultLauncher<Intent>) {
+        setupGoogleSignIn(activity)
+        val signInIntent = googleSignInClient?.signInIntent
+        launcher.launch(signInIntent)
+    }
+
+    /**
+     * Manejamos la respuesta del inicio de sesión con Google.
+     */
+    fun handleSignInResult(
+        account: GoogleSignInAccount?,
+        onSuccess: () -> Unit,
+        onError: (Exception) -> Unit
+    ) {
+        if (account == null) {
+            onError(Exception("No se pudo obtener la cuenta de Google"))
+            return
+        }
+
+        val credential = GoogleAuthProvider.getCredential(account.idToken, null)
+        auth.signInWithCredential(credential)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    _isLoggedIn.value = true
+                    onSuccess()
+                } else {
+                    _isLoggedIn.value = false
+                    onError(task.exception ?: Exception("Fallo el inicio de sesión con Firebase"))
+                }
+            }
+    }
+
+    /**
+     * Se cierra la sesión del usuario.
+     */
+    fun signOut() {
+        auth.signOut()
+        _isLoggedIn.value = false
+    }
+
+    /**
+     * Se obtiene el ID del usuario actual.
+     */
+    fun currentUserId(): String {
+        return auth.currentUser?.uid ?: ""
+    }
+
+    /**
+     * Verificamos si el usuario ya tiene un perfil creado en Firestore.
+     */
+    suspend fun doesUserExist(userId: String): Boolean {
+        return userRepository.getUser(userId) != null
+    }
+}
