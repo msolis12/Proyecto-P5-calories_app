@@ -1,0 +1,63 @@
+package com.example.appcalorica.ui
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import com.example.appcalorica.R
+import kotlinx.coroutines.delay
+
+@Composable
+fun SplashScreen(navController: NavController) {
+    var showLogo by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(300)
+        showLogo = true
+        delay(2000)
+        navController.navigate("login") {
+            popUpTo("splash") { inclusive = true }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFE0EAFB), Color(0xFFB6CCE0))
+                )
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            AnimatedVisibility(
+                visible = showLogo,
+                enter = fadeIn()
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.logo),
+                    contentDescription = "Logo",
+                    modifier = Modifier.size(300.dp) // 🔥 Aumentado el tamaño aquí
+                )
+            }
+
+        }
+    }
+}
