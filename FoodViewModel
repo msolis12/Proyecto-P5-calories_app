@@ -1,0 +1,72 @@
+package com.example.appcalorica.ViewModel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.appcalorica.model.FoodEntry
+import com.example.appcalorica.repository.FirebaseFoodRepository
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+class FoodViewModel(
+    private val repository: FirebaseFoodRepository = FirebaseFoodRepository()
+) : ViewModel() {
+
+    private val auth = FirebaseAuth.getInstance()
+
+    // Lista observable de comidas
+    private val _foodEntries = MutableStateFlow<List<FoodEntry>>(emptyList())
+    val foodEntries: StateFlow<List<FoodEntry>> = _foodEntries
+
+    // Obtenemos el ID del usuario actual
+    fun currentUserId(): String {
+        return auth.currentUser?.uid
+            ?: throw IllegalStateException("Usuario no autenticado en Firebase")
+    }
+
+    // Cargamos todas las comidas
+    fun loadEntries() {
+        viewModelScope.launch {
+            try {
+                _foodEntries.value = repository.getAllFoodEntries()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Agregamos una nueva comida
+    fun addFood(entry: FoodEntry) {
+        viewModelScope.launch {
+            try {
+                repository.addFoodEntry(entry)
+                loadEntries()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Eliminamos una comida por nombre y usuario
+    fun deleteFoodByName(name: String) {
+        viewModelScope.launch {
+            try {
+                repository.deleteFoodEntryByNameAndUser(name, currentUserId())
+                loadEntries()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Obtenemos todas las comidas del usuario actual (para dashboard)
+    suspend fun getEntriesByCurrentUser(): List<FoodEntry> {
+        return try {
+            val all = repository.getAllFoodEntries()
+            all.filter { it.userId == currentUserId() }
+        } catch (e: Exception) {
+            emptyList()
+        }
+    }
+}
