@@ -1,0 +1,14 @@
+package com.example.appcalorica.ViewModel
+
+import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+
+class MainViewModel : ViewModel() {
+    private val _selectedTab = MutableStateFlow("dashboard")
+    val selectedTab: StateFlow<String> = _selectedTab
+
+    fun navigateTo(tab: String) {
+        _selectedTab.value = tab
+    }
+}
