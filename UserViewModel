@@ -1,0 +1,89 @@
+package com.example.appcalorica.viewmodel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.appcalorica.model.UserModel
+import com.example.appcalorica.model.WeightEntry
+import com.example.appcalorica.repository.FirebaseUserRepository
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+class UserViewModel : ViewModel() {
+
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val userRepository = FirebaseUserRepository()
+
+    private val _allUsers = MutableStateFlow<List<UserModel>>(emptyList())
+    val allUsers: StateFlow<List<UserModel>> = _allUsers
+
+    private val _user = MutableStateFlow<UserModel?>(null)
+    val user: StateFlow<UserModel?> = _user
+
+    fun loadAllUsers() {
+        viewModelScope.launch {
+            try {
+                _allUsers.value = userRepository.getAllUsers()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun currentUserId(): String {
+        return auth.currentUser?.uid
+            ?: throw IllegalStateException("Usuario no autenticado en Firebase")
+    }
+
+    fun saveUser(user: UserModel) {
+        viewModelScope.launch {
+            try {
+                val existingUser = userRepository.getUser(user.id)
+                val updatedHistory = existingUser?.weightHistory?.toMutableList() ?: mutableListOf()
+
+                val nuevoPeso = WeightEntry(
+                    weight = user.weightKg,
+                    timestamp = System.currentTimeMillis()
+                )
+
+                val yaExiste = updatedHistory.any { it.weight == nuevoPeso.weight }
+                if (!yaExiste) {
+                    updatedHistory.add(nuevoPeso)
+                }
+
+                val updatedUser = user.copy(weightHistory = updatedHistory)
+                userRepository.saveUser(updatedUser)
+
+                // Se fuerza la recarga completa para garantizar sincronización
+                loadCurrentUser()
+                loadAllUsers()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    fun loadCurrentUser() {
+        viewModelScope.launch {
+            try {
+                val userId = currentUserId()
+                if (userId.isNotEmpty()) {
+                    val loadedUser = userRepository.getUser(userId)
+                    _user.value = loadedUser
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    suspend fun getUser(): UserModel? {
+        val userId = currentUserId()
+        return if (userId.isNotEmpty()) {
+            userRepository.getUser(userId)
+        } else {
+            null
+        }
+    }
+}
