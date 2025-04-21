@@ -1,0 +1,49 @@
+package com.example.appcalorica.ui
+
+import android.content.Intent
+import android.provider.CalendarContract
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
+
+@Composable
+fun CalendarScreen(navController: NavController) {
+    val context = LocalContext.current
+
+    LaunchedEffect(Unit) {
+        try {
+            val intent = Intent(Intent.ACTION_MAIN).apply {
+                addCategory(Intent.CATEGORY_APP_CALENDAR)
+            }
+            context.startActivity(intent)
+
+            // Redireccionar automáticamente a Dashboard
+            navController.navigate("dashboard") {
+                popUpTo("calendar") { inclusive = true }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Podés mostrar un mensaje si falla el intent
+        }
+    }
+
+    // Botón manual de regreso (en caso de que falle el intento, el usuario vuelve)
+    Column(modifier = Modifier.padding(16.dp)) {
+        Text("Redirigiendo al Calendario del sistema...", style = MaterialTheme.typography.h6)
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                navController.navigate("dashboard") {
+                    popUpTo("calendar") { inclusive = true }
+                }
+            }
+        ) {
+            Text("Volver al Dashboard")
+        }
+    }
+}
+
