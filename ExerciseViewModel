@@ -1,0 +1,72 @@
+package com.example.appcalorica.ViewModel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.appcalorica.model.ExerciseEntry
+import com.example.appcalorica.repository.FirebaseExerciseRepository
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+class ExerciseViewModel(
+    private val repository: FirebaseExerciseRepository = FirebaseExerciseRepository()
+) : ViewModel() {
+
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+
+    private val _exercises = MutableStateFlow<List<ExerciseEntry>>(emptyList())
+    val exercises: StateFlow<List<ExerciseEntry>> = _exercises
+
+    // Se Cargan los ejercicios solo del usuario autenticado
+    fun loadExercises() {
+        viewModelScope.launch {
+            try {
+                val userId = currentUserId()
+                _exercises.value = repository.getExercisesByUserId(userId)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Aqui agregamos un nuevo ejercicio
+    fun addExercise(entry: ExerciseEntry) {
+        viewModelScope.launch {
+            try {
+                repository.addExercise(entry)
+                loadExercises()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Eliminamos un ejercicio por nombre (para el usuario actual)
+    fun deleteExerciseByName(name: String) {
+        viewModelScope.launch {
+            try {
+                repository.deleteExerciseByName(name, currentUserId())
+                loadExercises()
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
+    // Obtenemos el ID del usuario autenticado
+    fun currentUserId(): String {
+        return auth.currentUser?.uid ?: throw IllegalStateException("Usuario no autenticado en Firebase")
+    }
+
+    // Obtenemos los ejercicios solo del usuario actual (para Dashboard)
+    suspend fun getExercisesByCurrentUser(): List<ExerciseEntry> {
+        return try {
+            repository.getExercisesByUserId(currentUserId())
+        } catch (e: Exception) {
+            e.printStackTrace()
+            emptyList()
+        }
+    }
+}
+
