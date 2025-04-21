@@ -1,0 +1,103 @@
+package com.example.appcalorica.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.example.appcalorica.viewmodel.UserViewModel
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
+
+@Composable
+fun StatsScreen(userViewModel: UserViewModel) {
+    val scope = rememberCoroutineScope()
+    var nombre by remember { mutableStateOf("") }
+    var objetivo by remember { mutableStateOf("") }
+    var pesoActual by remember { mutableStateOf(0f) }
+    var historialPesos by remember { mutableStateOf(emptyList<Pair<Float, String>>()) }
+
+    LaunchedEffect(Unit) {
+        scope.launch {
+            val usuario = userViewModel.getUser()
+            usuario?.let {
+                nombre = it.name
+                objetivo = it.goalType
+                pesoActual = it.weightKg
+
+                historialPesos = it.weightHistory.map { entry ->
+                    val fecha = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                        .format(Date(entry.timestamp))
+                    entry.weight to fecha
+                }
+            }
+        }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(Color(0xFFE0EAFB), Color(0xFFB6CCE0))
+                )
+            )
+            .padding(16.dp)
+            .verticalScroll(rememberScrollState())
+    ) {
+        Column(horizontalAlignment = Alignment.Start) {
+            Text(
+                "Estadísticas del Usuario",
+                style = MaterialTheme.typography.h5.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF2C3E50)
+                )
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Surface(
+                elevation = 4.dp,
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 16.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Nombre: $nombre", fontSize = 18.sp)
+                    Text("Objetivo actual: $objetivo", fontSize = 18.sp)
+                    Text("Peso actual: $pesoActual kg", fontSize = 18.sp)
+                }
+            }
+
+            Text(
+                "Historial de peso",
+                style = MaterialTheme.typography.subtitle1.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF34495E)
+                )
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (historialPesos.isEmpty()) {
+                Text("No hay historial registrado")
+            } else {
+                historialPesos.forEachIndexed { index, (peso, fecha) ->
+                    Text("• $peso kg ($fecha)", fontSize = 16.sp)
+                }
+            }
+        }
+    }
+}
