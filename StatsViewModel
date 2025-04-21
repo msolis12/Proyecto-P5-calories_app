@@ -1,0 +1,40 @@
+package com.example.appcalorica.ViewModel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.appcalorica.repository.FirebaseFoodRepository
+import com.example.appcalorica.repository.FirebaseExerciseRepository
+import com.google.firebase.auth.FirebaseAuth
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+
+class StatsViewModel(
+    private val foodRepo: FirebaseFoodRepository = FirebaseFoodRepository(),
+    private val exerciseRepo: FirebaseExerciseRepository = FirebaseExerciseRepository()
+) : ViewModel() {
+
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
+
+    private val _totalCalories = MutableStateFlow(0)
+    val totalCalories: StateFlow<Int> = _totalCalories
+
+    private val _totalBurned = MutableStateFlow(0)
+    val totalBurned: StateFlow<Int> = _totalBurned
+
+    fun calculateStats() {
+        val userId = auth.currentUser?.uid ?: return
+
+        viewModelScope.launch {
+            try {
+                val food = foodRepo.getEntriesByUserId(userId)
+                val exercise = exerciseRepo.getExercisesByUserId(userId)
+
+                _totalCalories.value = food.sumOf { it.calories }
+                _totalBurned.value = exercise.sumOf { it.caloriesBurned }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+}
