@@ -1,0 +1,7 @@
+package com.example.appcalorica.model
+
+data class ExerciseEntry(
+    val name: String = "",
+    val caloriesBurned: Int = 0,
+    val userId: String = "" // para filtrar por usuario
+)
