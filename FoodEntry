@@ -1,0 +1,10 @@
+package com.example.appcalorica.model
+
+data class FoodEntry(
+    val id: String = "",
+    val userId: String = "",
+    val name: String = "",
+    val calories: Int = 0,
+    val mealType: String = "", // desayuno, almuerzo, etc.
+    val timestamp: Long = System.currentTimeMillis()
+)
