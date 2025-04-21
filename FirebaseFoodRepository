@@ -1,0 +1,44 @@
+package com.example.appcalorica.repository
+
+import com.example.appcalorica.model.FoodEntry
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+
+class FirebaseFoodRepository {
+    private val db = FirebaseFirestore.getInstance()
+    private val foodEntries = db.collection("food_entries")
+
+    // ➕ Agregar entrada de comida
+    suspend fun addFoodEntry(entry: FoodEntry) {
+        foodEntries.add(entry).await()
+    }
+
+    // 🔍 Obtener todas las entradas (sin filtrar)
+    suspend fun getAllFoodEntries(): List<FoodEntry> {
+        val snapshot = foodEntries.get().await()
+        return snapshot.toObjects(FoodEntry::class.java)
+    }
+
+    // 🔍 Obtener entradas por usuario
+    suspend fun getEntriesByUserId(userId: String): List<FoodEntry> {
+        val snapshot = foodEntries
+            .whereEqualTo("userId", userId)
+            .get()
+            .await()
+        return snapshot.toObjects(FoodEntry::class.java)
+    }
+
+    // ❌ Eliminar comida por nombre y usuario
+    suspend fun deleteFoodEntryByNameAndUser(name: String, userId: String) {
+        val querySnapshot = foodEntries
+            .whereEqualTo("name", name)
+            .whereEqualTo("userId", userId)
+            .get()
+            .await()
+
+        for (doc in querySnapshot.documents) {
+            foodEntries.document(doc.id).delete().await()
+        }
+    }
+}
+
