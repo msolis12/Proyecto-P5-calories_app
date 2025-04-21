@@ -1,0 +1,106 @@
+package com.example.appcalorica.navigation
+
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import com.example.appcalorica.ViewModel.ExerciseViewModel
+import com.example.appcalorica.ViewModel.FoodViewModel
+import com.example.appcalorica.ui.*
+import com.example.appcalorica.viewmodel.UserViewModel
+
+@Composable
+fun AppNavGraph(
+    navController: NavHostController,
+    onLoginClick: () -> Unit,
+    loginError: String? = null,
+    userViewModel: UserViewModel,
+    foodViewModel: FoodViewModel,
+    exerciseViewModel: ExerciseViewModel,
+    onLogout: () -> Unit
+) {
+    NavHost(navController = navController, startDestination = "splash") {
+
+        composable("splash") {
+            SplashScreen(navController)
+        }
+
+        composable("login") {
+            LoginScreen(
+                onLoginClick = onLoginClick,
+                loginError = loginError
+            )
+        }
+
+        composable("dashboard") {
+            DashboardScreen(
+                navController = navController,
+                userViewModel = userViewModel,
+                foodViewModel = foodViewModel,
+                exerciseViewModel = exerciseViewModel
+            )
+        }
+
+        composable("foodLog") {
+            FoodLogScreen(
+                navController = navController,
+                foodViewModel = foodViewModel
+            )
+        }
+
+        composable("exerciseLog") {
+            ExerciseLogScreen(viewModel = exerciseViewModel)
+        }
+
+        composable("calendar") {
+            CalendarScreen(navController = navController)
+        }
+
+        composable("stats") {
+            StatsScreen(userViewModel = userViewModel) // se pasa el ViewModel
+        }
+
+        composable("settings") {
+            SettingsScreen(
+                navController = navController,
+                userViewModel = userViewModel,
+                onLogout = onLogout
+            )
+        }
+
+        // Pantallas para registrar cada tipo de comida
+        composable("breakfast") {
+            AddFoodScreen(
+                navController = navController,
+                mealType = "Desayuno",
+                foodViewModel = foodViewModel
+            )
+        }
+
+        composable("lunch") {
+            AddFoodScreen(
+                navController = navController,
+                mealType = "Almuerzo",
+                foodViewModel = foodViewModel
+            )
+        }
+
+        composable("dinner") {
+            AddFoodScreen(
+                navController = navController,
+                mealType = "Cena",
+                foodViewModel = foodViewModel
+            )
+        }
+
+        composable("snacks") {
+            AddFoodScreen(
+                navController = navController,
+                mealType = "Merienda",
+                foodViewModel = foodViewModel
+            )
+        }
+    }
+}
+
+
